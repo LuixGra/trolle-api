@@ -1,0 +1,20 @@
+# ambiente virtual
+venv/
+.env/
+
+# variáveis de ambiente
+.env
+
+# python
+__pycache__/
+*.pyc
+
+# docker
+*.log
+
+# banco local
+*.db
+
+# IDE
+.vscode/
+.idea/

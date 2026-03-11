@@ -1,0 +1,4 @@
+POST /register
+POST /login → recebe token
+Authorization: Bearer <token>
+POST /tasks (protegido)

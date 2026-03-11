@@ -1,0 +1,90 @@
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from app import models, schemas
+from app.session import SessionLocal
+from app.security import get_current_user
+
+from fastapi import HTTPException
+
+
+router = APIRouter(prefix="/tasks", tags=["Tasks"])
+
+#funcao pra pegar o banco de dados
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+#METODO POST IMPLEMENTADO SECURITY
+@router.post("/", response_model=schemas.TaskResponse)
+def create_task(
+    task: schemas.TaskCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    db_task = models.Task(
+        title=task.title,
+        description=task.description,
+        user_id=current_user.id
+    )
+
+    db.add(db_task)
+    db.commit()
+    db.refresh(db_task)
+    return db_task
+
+#METODO GET
+@router.get("/", response_model=list[schemas.TaskResponse])
+def list_tasks(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    tasks = db.query(models.Task).filter(models.Task.user_id == current_user.id).all()
+    return tasks
+
+
+
+
+@router.put("/{task_id}", response_model=schemas.TaskResponse)
+#METODO PUT(UPDATE)
+def update_task(task_id: int, task: schemas.TaskUpdate, db: Session = Depends(get_db)):
+    #pega a task pelo ID
+    db_task = db.query(models.Task).filter(models.Task.id == task_id).first()
+
+    #testa se o valor nao é nulo
+    if not db_task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    #testa se o titulo da task n é nulo
+    if task.title is not None:
+        db_task.title = task.title
+    #testa se a descricao n é nula
+    if task.description is not None:
+        db_task.description = task.description
+    #testa se o valor boolean n é nulo
+    if task.completed is not None:
+        db_task.completed = task.completed
+
+    #comita ao banco de dados
+    db.commit()
+    #atualiza
+    db.refresh(db_task)
+
+    return db_task
+
+
+#METODO DELETE
+@router.delete("/{task_id}")
+def delete_task(task_id: int, db: Session = Depends(get_db)):
+    db_task = db.query(models.Task).filter(models.Task.id == task_id).first()
+
+    if not db_task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    db.delete(db_task)
+    db.commit()
+
+    return {"message": "Task deleted successfully"}
+
